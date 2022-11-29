@@ -35,7 +35,24 @@ builder.objectType('User', {
     name: t.exposeString('name'),
     email: t.exposeString('email'),
     createdAt: t.exposeString('createdAt'),
-    updatedAt: t.exposeString('updatedAt')
+    updatedAt: t.exposeString('updatedAt'),
+    notes: t.field({
+      type: ['Note'],
+      description: 'User notes',
+      resolve: async (parent, args, ctx) => {
+        const notes = await ctx.prisma.note.findMany({
+          where: {
+            userId: parent.id
+          }
+        })
+
+        return notes.map((note) => ({
+          id: note.id,
+          description: note.description,
+          createdAt: note.createdAt.toISOString()
+        }))
+      }
+    })
   })
 })
 
