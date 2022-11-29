@@ -2,14 +2,16 @@ import SchemaBuilder from '@pothos/core'
 import ErrorsPlugin from '@pothos/plugin-errors'
 import { PrismaClient } from '@prisma/client'
 import { hash, verify } from 'argon2'
-import { createToken } from '../utils/jwt'
 
+import { createToken } from '../utils/jwt'
+import { TNote } from './types/note'
 import { TAuth, TUser } from './types/user'
 
 type TSchema = {
   Objects: {
     User: TUser
     Auth: TAuth
+    Note: TNote
   }
   Context: {
     prisma: PrismaClient
@@ -43,6 +45,14 @@ builder.objectType('Auth', {
   })
 })
 
+builder.objectType('Note', {
+  fields: (t) => ({
+    id: t.exposeString('id'),
+    description: t.exposeString('description'),
+    createdAt: t.exposeString('createdAt')
+  })
+})
+
 builder.objectType(Error, {
   name: 'Error',
   fields: (t) => ({
@@ -71,6 +81,14 @@ const LoginInput = builder.inputType('LoginInput', {
       required: true
     }),
     password: t.string({
+      required: true
+    })
+  })
+})
+
+const CreateNoteInput = builder.inputType('CreateNoteInput', {
+  fields: (t) => ({
+    description: t.string({
       required: true
     })
   })
@@ -203,6 +221,42 @@ builder.mutationType({
         return {
           token
         }
+      }
+    }),
+    createNote: t.field({
+      description: 'Create a new note',
+      type: 'Boolean',
+      errors: {
+        types: [Error]
+      },
+      args: {
+        input: t.arg({ type: CreateNoteInput, required: true })
+      },
+      resolve: async (_, { input }, { prisma, session }) => {
+        const err = new Error('Unauthorized')
+
+        if (!session) {
+          throw err
+        }
+
+        const user = await prisma.user.findUnique({
+          where: {
+            id: session
+          }
+        })
+
+        if (!user) {
+          throw err
+        }
+
+        await prisma.note.create({
+          data: {
+            description: input.description,
+            userId: user.id
+          }
+        })
+
+        return true
       }
     })
   })

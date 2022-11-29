@@ -17,4 +17,15 @@ model User {
   password  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  notes Note[]
+}
+
+model Note {
+  id          String   @id @default(cuid())
+  description String
+  userId      String
+  createdAt   DateTime @default(now())
+
+  User User @relation(fields: [userId], references: [id])
 }
