@@ -5,8 +5,8 @@ import { PrismaClient } from "@prisma/client";
 import { hash, verify } from "argon2";
 
 import { createToken } from "../utils/jwt";
-import { TNote } from "./types/note";
-import { TAuth, TUser } from "./types/user";
+import { mapNoteFromPrisma, TNote } from "./types/note";
+import { mapUserFromPrisma, TAuth, TUser } from "./types/user";
 
 type TSchema = {
   Objects: {
@@ -73,11 +73,9 @@ builder.objectField("User", "notes", (t) =>
         },
       });
 
-      return ids.map((uid) => notes.filter((note) => note.userId === uid).map((note) => ({
-        id: note.id,
-        description: note.description,
-        createdAt: note.createdAt.toISOString(),
-      })));
+      return ids.map((uid) =>
+        notes.filter((note) => note.userId === uid).map(mapNoteFromPrisma),
+      );
     },
     resolve: (user, _) => user.id,
   }),
@@ -143,13 +141,7 @@ builder.queryType({
           throw err;
         }
 
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          createdAt: user.createdAt.toISOString(),
-          updatedAt: user.updatedAt.toISOString(),
-        };
+        return mapUserFromPrisma(user);
       },
     }),
     users: t.field({
@@ -158,13 +150,7 @@ builder.queryType({
       resolve: async (_, __, { prisma }) => {
         const users = await prisma.user.findMany();
 
-        return users.map((user) => ({
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          createdAt: user.createdAt.toISOString(),
-          updatedAt: user.updatedAt.toISOString(),
-        }));
+        return users.map(mapUserFromPrisma);
       },
     }),
   }),
@@ -201,13 +187,7 @@ builder.mutationType({
           },
         });
 
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          createdAt: user.createdAt.toISOString(),
-          updatedAt: user.updatedAt.toISOString(),
-        };
+        return mapUserFromPrisma(user);
       },
     }),
     login: t.field({
